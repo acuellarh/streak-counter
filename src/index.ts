@@ -16,17 +16,23 @@ export function differenceInDays(dateLeft: Date, dateRight: Date): number {
 function shouldIncrementOrResetStreakCount(
   currentDate: Date,
   lastLoginDate: string,
-): 'increment' | undefined {
+): 'increment' | 'reset' | 'none' {
   // We get 11/5/2021
   // so to get 5, we use our helper function
-  const difference = differenceInDays(currentDate, new Date(lastLoginDate))
+  const difference = currentDate.getDate() - parseInt(lastLoginDate.split("/")[1])
+  
+  // Same-day login, do nothing
+  if (difference === 0) {
+      return "none";
+  }
+
   // This means they logged in the day after the currentDate
   if (difference === 1) {
     return 'increment'
   }
   // Otherwise they logged in after a day, which would
   // break the streak
-  return undefined
+  return 'reset'
 }
 
 
@@ -40,18 +46,32 @@ export function streakCounter(storage: Storage, date: Date): Streak {
     const streak = JSON.parse(streakInLocalStorage);
     const state = shouldIncrementOrResetStreakCount(date, streak.lastLoginDate)   
     const SHOULD_INCREMENT = state === "increment";
+    const SHOULD_RESET = state === "reset";
 
     if (SHOULD_INCREMENT) {
-      const updatedStreak = {
-        ...streak,
-        currentCount: streak.currentCount + 1,
-        lastLoginDate: formattedDate(date),
-      };
-      // store in localStorage
-      storage.setItem(KEY, JSON.stringify(updatedStreak));
-      
-     return updatedStreak 
+        const updatedStreak = {
+          ...streak,
+          currentCount: streak.currentCount + 1,
+          lastLoginDate: formattedDate(date),
+        };
+        // store in localStorage
+        storage.setItem(KEY, JSON.stringify(updatedStreak));
+
+      return updatedStreak 
     }  
+
+    if (SHOULD_RESET) {
+        const updatedStreak: Streak = {
+          currentCount: 1,
+          startDate: formattedDate(date),
+          lastLoginDate: formattedDate(date),
+        };
+
+        // store in localStorage
+        storage.setItem(KEY, JSON.stringify(updatedStreak));
+
+        return updatedStreak;
+    }
 
     return streak;
     } catch (error) {
